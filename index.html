@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NitedCrypto - Tu Plataforma Crypto</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Opcional: Firebase para foro multiusuario -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
+    <script src="config.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-800 border-b border-gray-700">
+        <div class="px-4 py-3 md:px-6 md:py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2 md:space-x-3">
+                    <div class="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <span class="text-lg md:text-xl font-bold">₿</span>
+                    </div>
+                    <h1 class="text-lg md:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                        NitedCrypto
+                    </h1>
+                </div>
+                
+                <!-- Desktop Navigation -->
+                <nav class="hidden md:flex space-x-6">
+                    <a href="#" onclick="showSection('market')" class="text-gray-300 hover:text-white transition-colors">Mercado</a>
+                    <a href="#" onclick="showSection('news')" class="text-gray-300 hover:text-white transition-colors">Noticias</a>
+                    <a href="#" onclick="showSection('forum')" class="text-gray-300 hover:text-white transition-colors">Foro</a>
+                    <a href="#" onclick="showSection('trading')" class="text-gray-300 hover:text-white transition-colors">Trading</a>
+                    <a href="#" onclick="showSection('profile')" class="text-gray-300 hover:text-white transition-colors">Perfil</a>
+                </nav>
+                
+                <!-- Desktop Wallet -->
+                <div id="walletSection" class="hidden md:block">
+                    <button id="connectWalletBtn" onclick="connectWallet()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors text-sm">
+                        Conectar Wallet
+                    </button>
+                    <div id="walletInfo" class="hidden flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                            <span class="text-xs">✓</span>
+                        </div>
+                        <div class="text-sm">
+                            <div class="font-medium" id="walletAddress"></div>
+                            <div class="text-gray-400 flex items-center space-x-2 flex-wrap gap-2 mt-1" id="walletNetworkWrap">
+                                <span id="walletNetwork"></span>
+                                <button onclick="switchToBase()" class="text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 px-2 py-0.5 rounded">Cambiar a Base</button>
+                                <span id="siweBadge" class="hidden text-xs bg-green-600/20 text-green-300 px-2 py-0.5 rounded">Autenticado</span>
+                                <button id="siweBtn" onclick="signInWithEthereum()" class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 px-2 py-0.5 rounded">Login Web3</button>
+                            </div>
+                        </div>
+                        <button onclick="disconnectWallet()" class="text-gray-400 hover:text-white">
+                            🚪
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Mobile Menu Button -->
+                <button id="mobileMenuBtn" onclick="toggleMobileMenu()" class="md:hidden p-2 text-white hover:bg-gray-700 rounded-lg transition-colors">
+                    <svg id="menuIcon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                    <svg id="closeIcon" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Mobile Menu -->
+        <div id="mobileMenu" class="md:hidden bg-gray-900 border-t border-gray-700 hidden">
+            <div class="px-4 py-4 space-y-1">
+                <a href="#" onclick="showSection('market'); toggleMobileMenu()" class="flex items-center space-x-3 text-gray-300 hover:text-white hover:bg-gray-800 px-4 py-3 rounded-lg transition-colors">
+                    <span class="text-xl">📈</span>
+                    <span class="font-medium">Mercado</span>
+                </a>
+                <a href="#" onclick="showSection('news'); toggleMobileMenu()" class="flex items-center space-x-3 text-gray-300 hover:text-white hover:bg-gray-800 px-4 py-3 rounded-lg transition-colors">
+                    <span class="text-xl">📰</span>
+                    <span class="font-medium">Noticias</span>
+                </a>
+                <a href="#" onclick="showSection('forum'); toggleMobileMenu()" class="flex items-center space-x-3 text-gray-300 hover:text-white hover:bg-gray-800 px-4 py-3 rounded-lg transition-colors">
+                    <span class="text-xl">💬</span>
+                    <span class="font-medium">Foro</span>
+                </a>
+                <a href="#" onclick="showSection('trading'); toggleMobileMenu()" class="flex items-center space-x-3 text-gray-300 hover:text-white hover:bg-gray-800 px-4 py-3 rounded-lg transition-colors">
+                    <span class="text-xl">💹</span>
+                    <span class="font-medium">Trading</span>
+                </a>
+                <a href="#" onclick="showSection('profile'); toggleMobileMenu()" class="flex items-center space-x-3 text-gray-300 hover:text-white hover:bg-gray-800 px-4 py-3 rounded-lg transition-colors">
+                    <span class="text-xl">👤</span>
+                    <span class="font-medium">Perfil</span>
+                </a>
+                
+                <!-- Mobile Wallet Section -->
+                <div class="border-t border-gray-700 pt-4 mt-4">
+                    <div id="mobileWalletSection">
+                        <button id="mobileConnectWalletBtn" onclick="connectWallet()" class="w-full bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded-lg transition-colors text-sm font-medium">
+                            🔗 Conectar Wallet
+                        </button>
+                        <div id="mobileWalletInfo" class="hidden">
+                            <div class="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                                        <span class="text-sm">✓</span>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium text-sm" id="mobileWalletAddress"></div>
+                                        <div class="text-gray-400 text-xs" id="mobileWalletNetwork"></div>
+                                    </div>
+                                </div>
+                                <button onclick="disconnectWallet()" class="text-gray-400 hover:text-white p-2">
+                                    🚪
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-8">
+        <!-- Market Section -->
+        <div id="marketSection" class="section-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
+            <!-- Mercado en Tiempo Real -->
+            <div class="lg:col-span-2">
+                <div class="bg-gray-800 rounded-lg md:rounded-xl p-4 md:p-6 border border-gray-700">
+                    <div class="flex items-center justify-between mb-3 md:mb-6">
+                        <h2 class="text-lg md:text-xl font-semibold">Mercado en Tiempo Real</h2>
+                        <div class="flex items-center space-x-1 md:space-x-2">
+                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <span class="text-xs text-gray-400">En vivo</span>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3 md:space-y-4" id="cryptoList">
+                        <!-- Las criptomonedas se cargarán aquí -->
+                    </div>
+                </div>
+
+                <!-- Gráfico Principal (Tiempo Real) -->
+                <div class="bg-gray-800 rounded-lg md:rounded-xl p-4 md:p-6 border border-gray-700 mt-4 md:mt-6">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3 md:mb-4">
+                        <div class="flex items-center space-x-3">
+                            <h3 class="text-base md:text-lg font-semibold">Gráfico en tiempo real</h3>
+                            <div class="flex items-center space-x-2">
+                                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse" id="liveDot"></span>
+                                <span class="text-xs text-gray-400" id="streamStatus">En vivo</span>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <label for="symbolSelect" class="text-xs text-gray-400">Par:</label>
+                            <select id="symbolSelect" class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm">
+                                <option value="BTCUSDT">BTC/USDT</option>
+                                <option value="ETHUSDT">ETH/USDT</option>
+                                <option value="BNBUSDT">BNB/USDT</option>
+                                <option value="SOLUSDT">SOL/USDT</option>
+                                <option value="ADAUSDT">ADA/USDT</option>
+                                <option value="DOTUSDT">DOT/USDT</option>
+                            </select>
+                            <label for="chartTypeSelect" class="text-xs text-gray-400">Tipo:</label>
+                            <select id="chartTypeSelect" class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm">
+                                <option value="line">Línea</option>
+                                <option value="candles">Velas</option>
+                            </select>
+                            <label for="intervalSelect" class="text-xs text-gray-400">TF:</label>
+                            <select id="intervalSelect" class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm">
+                                <option value="1m">1m</option>
+                                <option value="5m">5m</option>
+                                <option value="15m">15m</option>
+                                <option value="1h">1h</option>
+                                <option value="4h">4h</option>
+                            </select>
+                            <div class="text-sm font-mono bg-gray-900 border border-gray-700 rounded px-2 py-1 min-w-[96px] text-right" id="currentPrice">$ -</div>
+                        </div>
+                    </div>
+                    <div class="h-40 md:h-56 lg:h-64 bg-gray-900 rounded-lg p-2">
+                        <div id="lwChart" class="w-full h-full"></div>
+                    </div>
+                    <div class="text-xs text-gray-500 mt-2">Fuente de datos: Binance (WS). Listado: CoinGecko.</div>
+                </div>
+            </div>
+
+            <!-- Bot de Ayuda -->
+            <div class="lg:col-span-1 mt-4 lg:mt-0">
+                <div class="bg-gray-800 rounded-lg md:rounded-xl border border-gray-700 h-fit">
+                    <div class="p-4 md:p-4 border-b border-gray-700">
+                        <div class="flex items-center space-x-2 md:space-x-3">
+                            <div class="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                                <span class="text-sm md:text-lg">🤖</span>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-base md:text-base">CryptoBot</h3>
+                                <div class="flex items-center space-x-1">
+                                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    <span class="text-xs text-gray-400">En línea</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="h-56 md:h-72 lg:h-80 overflow-y-auto p-4 space-y-3" id="chatMessages">
+                        <div class="flex items-start space-x-2">
+                            <div class="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-xs md:text-sm">
+                                🤖
+                            </div>
+                            <div class="chat-bubble-bot text-white p-3 rounded-lg rounded-tl-none max-w-xs text-sm">
+                                ¡Hola! Soy tu asistente crypto. Puedo ayudarte con precios, análisis técnico, noticias y más. ¿En qué puedo ayudarte?
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4 border-t border-gray-700">
+                        <div class="flex space-x-2">
+                            <input 
+                                type="text" 
+                                id="chatInput"
+                                placeholder="Pregúntame sobre crypto..."
+                                class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                            >
+                            <button 
+                                onclick="sendMessage()"
+                                class="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg transition-colors text-xs"
+                            >
+                                📤
+                            </button>
+                        </div>
+                        
+                        <!-- Botones de respuesta rápida -->
+                        <div class="grid grid-cols-3 gap-1 mt-2">
+                            <button onclick="quickMessage('¿Cuál es el precio de Bitcoin?')" class="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-xs transition-colors">
+                                BTC
+                            </button>
+                            <button onclick="quickMessage('Análisis de Ethereum')" class="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-xs transition-colors">
+                                ETH
+                            </button>
+                            <button onclick="quickMessage('Noticias crypto')" class="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-xs transition-colors">
+                                News
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Estadísticas Globales -->
+            <div class="grid [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))] gap-6 xl:gap-8 mt-8 md:mt-10 items-stretch">
+                <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-4 md:p-6 border border-gray-700 hover:border-gray-600 transition-all duration-300 hover:shadow-lg h-full w-full">
+                    <div class="flex flex-col space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
+                                <span class="text-2xl">🌍</span>
+                            </div>
+                            <div class="text-xs text-green-400 font-semibold bg-green-400/10 px-2 py-1 rounded-lg">+2.4%</div>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 text-sm font-medium">Cap. de Mercado</p>
+                            <p class="text-2xl md:text-3xl font-bold text-white" id="marketCap">$2.1T</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-4 md:p-6 border border-gray-700 hover:border-gray-600 transition-all duration-300 hover:shadow-lg h-full w-full">
+                    <div class="flex flex-col space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
+                                <span class="text-2xl">📊</span>
+                            </div>
+                            <div class="text-xs text-blue-400 font-semibold bg-blue-400/10 px-2 py-1 rounded-lg">24h</div>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 text-sm font-medium">Volumen 24h</p>
+                            <p class="text-2xl md:text-3xl font-bold text-white" id="volume24h">$89.2B</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-4 md:p-6 border border-gray-700 hover:border-gray-600 transition-all duration-300 hover:shadow-lg h-full w-full">
+                    <div class="flex flex-col space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="w-12 h-12 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg">
+                                <span class="text-2xl">₿</span>
+                            </div>
+                            <div class="text-xs text-orange-400 font-semibold bg-orange-400/10 px-2 py-1 rounded-lg">BTC</div>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 text-sm font-medium">Dominancia BTC</p>
+                            <p class="text-2xl md:text-3xl font-bold text-white" id="btcDominance">54.2%</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-4 md:p-6 border border-gray-700 hover:border-gray-600 transition-all duration-300 hover:shadow-lg h-full w-full">
+                    <div class="flex flex-col space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="w-12 h-12 bg-gradient-to-r from-red-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                                <span class="text-2xl">😐</span>
+                            </div>
+                            <div class="text-xs text-yellow-400 font-semibold bg-yellow-400/10 px-2 py-1 rounded-lg">Neutral</div>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 text-sm font-medium">Fear & Greed</p>
+                            <p class="text-2xl md:text-3xl font-bold text-orange-400" id="fearGreed">68</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+            </div>
+        </div>
+
+        <!-- News Section -->
+        <div id="newsSection" class="section-content hidden">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold mb-2">📰 Noticias Crypto</h2>
+                <p class="text-gray-400">Las últimas noticias del mundo crypto</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 space-y-6" id="newsArticles">
+                    <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                        <div class="flex items-center space-x-3 mb-4">
+                            <span class="text-3xl">🚀</span>
+                            <div>
+                                <h3 class="text-xl font-semibold">Bitcoin supera los $45,000</h3>
+                                <p class="text-gray-400 text-sm">Hace 2 horas • CoinDesk</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-300 mb-4">El precio de Bitcoin alcanzó un nuevo máximo mensual tras la aprobación de múltiples ETFs spot por parte de la SEC.</p>
+                        <div class="flex items-center space-x-4 text-sm text-gray-400">
+                            <span>👁️ 2.3K vistas</span>
+                            <span>💬 45 comentarios</span>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                        <div class="flex items-center space-x-3 mb-4">
+                            <span class="text-3xl">⚡</span>
+                            <div>
+                                <h3 class="text-xl font-semibold">Ethereum 2.0 completa actualización</h3>
+                                <p class="text-gray-400 text-sm">Hace 4 horas • Ethereum Foundation</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-300 mb-4">La red Ethereum finaliza su transición completa a Proof of Stake, reduciendo el consumo energético en un 99%.</p>
+                        <div class="flex items-center space-x-4 text-sm text-gray-400">
+                            <span>👁️ 1.8K vistas</span>
+                            <span>💬 32 comentarios</span>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                        <div class="flex items-center space-x-3 mb-4">
+                            <span class="text-3xl">🏦</span>
+                            <div>
+                                <h3 class="text-xl font-semibold">Base Network alcanza $1B en TVL</h3>
+                                <p class="text-gray-400 text-sm">Hace 6 horas • DeFiPulse</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-300 mb-4">La Layer 2 de Coinbase experimenta un crecimiento explosivo en DeFi con más de $1 billón en valor total bloqueado.</p>
+                        <div class="flex items-center space-x-4 text-sm text-gray-400">
+                            <span>👁️ 1.2K vistas</span>
+                            <span>💬 28 comentarios</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="lg:col-span-1">
+                    <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                        <h3 class="text-xl font-semibold mb-4">🔥 Trending</h3>
+                        <div class="space-y-3" id="trendingTopics"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Trading Section -->
+        <div id="tradingSection" class="section-content hidden">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold mb-2">💹 Trading</h2>
+                <p class="text-gray-400">Herramientas profesionales de trading</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2">
+                    <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 mb-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-2xl font-semibold">BTC/USDT</h3>
+                            <div class="flex items-center space-x-2">
+                                <span class="bg-red-500 text-xs px-2 py-1 rounded font-medium">DEMO</span>
+                                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <div class="text-4xl font-bold text-green-400 mb-2">$43,250.00</div>
+                            <div class="text-green-400">+2.45% (+$1,032.50)</div>
+                        </div>
+                        
+                        <div class="h-64 bg-gray-900 rounded-lg flex items-center justify-center mb-6">
+                            <div class="text-center">
+                                <div class="text-5xl mb-3">📈</div>
+                                <p class="text-gray-400 text-lg">Gráfico TradingView</p>
+                                <p class="text-gray-500 text-sm">Integración disponible</p>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="bg-gray-900 rounded-lg p-4">
+                                <h4 class="font-semibold text-green-400 mb-4 text-lg">Comprar BTC</h4>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-gray-400 mb-2">Precio (USDT)</label>
+                                        <input type="number" value="43250" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3">
+                                    </div>
+                                    <div>
+                                        <label class="block text-gray-400 mb-2">Cantidad (BTC)</label>
+                                        <input type="number" value="0.001" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3">
+                                    </div>
+                                    <button onclick="alert('DEMO: Orden de compra simulada')" class="w-full bg-green-600 hover:bg-green-700 py-3 rounded-lg font-medium transition-colors">
+                                        Comprar BTC
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-900 rounded-lg p-4">
+                                <h4 class="font-semibold text-red-400 mb-4 text-lg">Vender BTC</h4>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-gray-400 mb-2">Precio (USDT)</label>
+                                        <input type="number" value="43250" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3">
+                                    </div>
+                                    <div>
+                                        <label class="block text-gray-400 mb-2">Cantidad (BTC)</label>
+                                        <input type="number" value="0.001" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3">
+                                    </div>
+                                    <button onclick="alert('DEMO: Orden de venta simulada')" class="w-full bg-red-600 hover:bg-red-700 py-3 rounded-lg font-medium transition-colors">
+                                        Vender BTC
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="lg:col-span-1">
+                    <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 mb-6">
+                        <h3 class="font-semibold mb-4 text-lg">💰 Balance</h3>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-400">BTC</span>
+                                <span class="font-medium">0.05432</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-400">USDT</span>
+                                <span class="font-medium">1,250.00</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-400">ETH</span>
+                                <span class="font-medium">2.1543</span>
+                            </div>
+                            <div class="border-t border-gray-700 pt-4">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-semibold">Total USD</span>
+                                    <span class="font-bold text-green-400">$8,945.32</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                        <h3 class="font-semibold mb-4 text-lg">📋 Órdenes Abiertas</h3>
+                        <div class="space-y-3">
+                            <div class="bg-gray-900 rounded-lg p-4">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-green-400 font-medium">Compra</span>
+                                    <span>BTC/USDT</span>
+                                </div>
+                                <div class="flex justify-between text-sm text-gray-400">
+                                    <span>0.001 BTC</span>
+                                    <span>$42,000</span>
+                                </div>
+                            </div>
+                            <div class="bg-gray-900 rounded-lg p-4">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-red-400 font-medium">Venta</span>
+                                    <span>ETH/USDT</span>
+                                </div>
+                                <div class="flex justify-between text-sm text-gray-400">
+                                    <span>0.5 ETH</span>
+                                    <span>$2,700</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Forum Section -->
+        <div id="forumSection" class="section-content hidden">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold mb-2">💬 Foro Crypto</h2>
+                <p class="text-gray-400">Comparte conocimiento con la comunidad</p>
+            </div>
+            
+            <!-- Login Prompt -->
+            <div id="loginPrompt" class="text-center py-12 bg-gray-800 rounded-xl border border-gray-700 mb-8">
+                <div class="text-6xl mb-4">🔐</div>
+                <h3 class="text-xl font-semibold mb-2">Conecta tu wallet para participar</h3>
+                <p class="text-gray-400 mb-6">Necesitas conectar tu wallet para ver y crear posts en el foro</p>
+                <button onclick="connectWallet()" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium transition-colors">
+                    Conectar Wallet
+                </button>
+            </div>
+            
+            <!-- Forum Content -->
+            <div id="forumContent" class="hidden">
+                <!-- New Post Button -->
+                <div class="mb-6">
+                    <button id="newPostBtn" onclick="showNewPostModal()" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium transition-colors">
+                        ✍️ Crear Nuevo Post
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                    <div class="lg:col-span-3">
+                        <div id="forumPosts" class="space-y-6">
+                            <!-- Posts will be rendered here -->
+                        </div>
+                    </div>
+                
+                    <div class="lg:col-span-1">
+                        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 mb-6">
+                            <h3 class="font-semibold mb-4">📂 Categorías</h3>
+                            <div class="space-y-2">
+                                <button onclick="filterPosts('all')" class="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                                    🌐 Todas
+                                </button>
+                                <button onclick="filterPosts('trading')" class="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                                    📈 Trading
+                                </button>
+                                <button onclick="filterPosts('defi')" class="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                                    🏦 DeFi
+                                </button>
+                                <button onclick="filterPosts('nft')" class="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                                    🎨 NFTs
+                                </button>
+                                <button onclick="filterPosts('tech')" class="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                                    ⚡ Tecnología
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                            <h3 class="font-semibold mb-4">🏆 Top Contributors</h3>
+                            <div id="topContributors" class="space-y-4">
+                                <!-- Contributors will be rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- New Post Modal -->
+        <div id="newPostModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
+            <div class="bg-gray-800 rounded-xl p-6 w-full max-w-2xl mx-auto border border-gray-700 max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-semibold">✍️ Crear Nuevo Post</h3>
+                    <button onclick="hideNewPostModal()" class="text-gray-400 hover:text-white text-2xl">×</button>
+                </div>
+                
+                <form onsubmit="createPost(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-gray-400 mb-2">Título</label>
+                        <input type="text" id="postTitle" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500" placeholder="Escribe un título llamativo...">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-400 mb-2">Categoría</label>
+                        <select id="postCategory" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500">
+                            <option value="trading">📈 Trading</option>
+                            <option value="defi">🏦 DeFi</option>
+                            <option value="nft">🎨 NFTs</option>
+                            <option value="tech">⚡ Tecnología</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-400 mb-2">Contenido</label>
+                        <textarea id="postContent" required rows="6" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500" placeholder="Comparte tu conocimiento con la comunidad..."></textarea>
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button type="submit" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium transition-colors">
+                            Publicar
+                        </button>
+                        <button type="button" onclick="hideNewPostModal()" class="w-full sm:w-auto bg-gray-600 hover:bg-gray-700 px-6 py-3 rounded-lg font-medium transition-colors">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Comments Modal -->
+        <div id="commentsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-gray-800 rounded-xl p-6 w-full max-w-4xl mx-4 border border-gray-700 max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-semibold">💬 Comentarios</h3>
+                    <button onclick="hideCommentsModal()" class="text-gray-400 hover:text-white text-2xl">×</button>
+                </div>
+                
+                <!-- Post Content -->
+                <div id="modalPostContent" class="mb-6 p-4 bg-gray-900 rounded-lg">
+                    <!-- Post content will be loaded here -->
+                </div>
+                
+                <!-- New Comment Form -->
+                <div class="mb-6 p-4 bg-gray-700 rounded-lg">
+                    <form onsubmit="addComment(event)" class="space-y-3">
+                        <textarea id="newCommentText" required rows="3" class="w-full bg-gray-600 border border-gray-500 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500" placeholder="Escribe tu comentario..."></textarea>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-medium transition-colors">
+                            Comentar
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Comments List -->
+                <div id="commentsList" class="space-y-4">
+                    <!-- Comments will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Section -->
+        <div id="profileSection" class="section-content hidden">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold mb-2">👤 Mi Perfil</h2>
+                <p class="text-gray-400">Personaliza tu identidad en la plataforma</p>
+            </div>
+            
+            <!-- Login Prompt -->
+            <div id="profileLoginPrompt" class="text-center py-12 bg-gray-800 rounded-xl border border-gray-700 mb-8">
+                <div class="text-6xl mb-4">🔐</div>
+                <h3 class="text-xl font-semibold mb-2">Conecta tu wallet para acceder a tu perfil</h3>
+                <p class="text-gray-400 mb-6">Necesitas conectar tu wallet para personalizar tu perfil</p>
+                <button onclick="connectWallet()" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium transition-colors">
+                    Conectar Wallet
+                </button>
+            </div>
+            
+            <!-- Profile Content -->
+            <div id="profileContent" class="hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Profile Card -->
+                    <div class="lg:col-span-1">
+                        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 mb-6">
+                            <div class="text-center mb-6">
+                                <div class="relative inline-block">
+                                    <div id="currentProfilePic" class="w-24 h-24 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-4">
+                                        👤
+                                    </div>
+                                    <button onclick="showAvatarModal()" class="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center text-sm transition-colors">
+                                        ✏️
+                                    </button>
+                                </div>
+                                <h3 id="profileDisplayName" class="text-xl font-semibold mb-2">Usuario Anónimo</h3>
+                                <div class="flex items-center justify-center space-x-2 text-sm text-gray-400">
+                                    <span>🏆</span>
+                                    <span id="userReputation">100</span>
+                                    <span>puntos</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Stats -->
+                            <div class="grid grid-cols-2 gap-4 mb-6">
+                                <div class="text-center p-3 bg-gray-700 rounded-lg">
+                                    <div class="text-2xl font-bold text-blue-400" id="userPosts">0</div>
+                                    <div class="text-xs text-gray-400">Posts</div>
+                                </div>
+                                <div class="text-center p-3 bg-gray-700 rounded-lg">
+                                    <div class="text-2xl font-bold text-green-400" id="userComments">0</div>
+                                    <div class="text-xs text-gray-400">Comentarios</div>
+                                </div>
+                                <div class="text-center p-3 bg-gray-700 rounded-lg">
+                                    <div class="text-2xl font-bold text-yellow-400" id="userUpvotes">0</div>
+                                    <div class="text-xs text-gray-400">Upvotes</div>
+                                </div>
+                                <div class="text-center p-3 bg-gray-700 rounded-lg">
+                                    <div class="text-2xl font-bold text-purple-400" id="memberSince">2024</div>
+                                    <div class="text-xs text-gray-400">Miembro desde</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Wallet Info -->
+                            <div class="border-t border-gray-700 pt-4">
+                                <h4 class="font-semibold mb-3">💼 Información de Wallet</h4>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-400">Dirección:</span>
+                                        <span id="profileWalletAddress">-</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-400">Red:</span>
+                                        <span id="profileNetwork">-</span>
+                                    </div>
+                                    <button onclick="disconnectWallet()" class="w-full mt-3 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                                        Desconectar Wallet
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Profile Settings -->
+                    <div class="lg:col-span-2">
+                        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 mb-6">
+                            <h3 class="text-xl font-semibold mb-6">⚙️ Configuración del Perfil</h3>
+                            
+                            <form onsubmit="updateProfile(event)" class="space-y-6">
+                                <div>
+                                    <label class="block text-gray-400 mb-2">Nombre de Usuario</label>
+                                    <input type="text" id="displayName" maxlength="30" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500" placeholder="Elige un nombre único...">
+                                    <p class="text-xs text-gray-500 mt-1">Este nombre aparecerá en tus posts y comentarios</p>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-gray-400 mb-2">Biografía</label>
+                                    <textarea id="userBio" rows="3" maxlength="200" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500" placeholder="Cuéntanos sobre ti..."></textarea>
+                                    <p class="text-xs text-gray-500 mt-1">Máximo 200 caracteres</p>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-gray-400 mb-3">Intereses</label>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <label class="flex items-center space-x-2 cursor-pointer">
+                                            <input type="checkbox" value="trading" class="interest-checkbox rounded bg-gray-700 border-gray-600 text-blue-600 focus:ring-blue-500">
+                                            <span class="text-sm">📈 Trading</span>
+                                        </label>
+                                        <label class="flex items-center space-x-2 cursor-pointer">
+                                            <input type="checkbox" value="defi" class="interest-checkbox rounded bg-gray-700 border-gray-600 text-blue-600 focus:ring-blue-500">
+                                            <span class="text-sm">🏦 DeFi</span>
+                                        </label>
+                                        <label class="flex items-center space-x-2 cursor-pointer">
+                                            <input type="checkbox" value="nfts" class="interest-checkbox rounded bg-gray-700 border-gray-600 text-blue-600 focus:ring-blue-500">
+                                            <span class="text-sm">🎨 NFTs</span>
+                                        </label>
+                                        <label class="flex items-center space-x-2 cursor-pointer">
+                                            <input type="checkbox" value="tech" class="interest-checkbox rounded bg-gray-700 border-gray-600 text-blue-600 focus:ring-blue-500">
+                                            <span class="text-sm">⚡ Tecnología</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium transition-colors">
+                                    Guardar Cambios
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <!-- Recent Activity -->
+                        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                            <h3 class="text-xl font-semibold mb-6">📊 Actividad Reciente</h3>
+                            <div id="userActivity" class="space-y-4">
+                                <!-- Activity will be rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Avatar Selection Modal -->
+        <div id="avatarModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-gray-800 rounded-xl p-6 w-full max-w-md mx-4 border border-gray-700">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-semibold">🎨 Elige tu Avatar</h3>
+                    <button onclick="hideAvatarModal()" class="text-gray-400 hover:text-white text-2xl">×</button>
+                </div>
+                
+                <div class="grid grid-cols-4 gap-3 mb-6">
+                    <button onclick="selectAvatar('👤')" class="avatar-option w-16 h-16 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-2xl transition-colors">👤</button>
+                    <button onclick="selectAvatar('🚀')" class="avatar-option w-16 h-16 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-2xl transition-colors">🚀</button>
+                    <button onclick="selectAvatar('💎')" class="avatar-option w-16 h-16 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-2xl transition-colors">💎</button>
+                    <button onclick="selectAvatar('⚡')" class="avatar-option w-16 h-16 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-2xl transition-colors">⚡</button>
+                    <button onclick="selectAvatar('🔥')" class="avatar-option w-16 h-16 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-2xl transition-colors">🔥</button>
+                    <button onclick="selectAvatar('🌟')" class="avatar-option w-16 h-16 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-2xl transition-colors">🌟</button>
+                    <button onclick="selectAvatar('🎯')" class="avatar-option w-16 h-16 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-2xl transition-colors">🎯</button>
+                    <button onclick="selectAvatar('🏆')" class="avatar-option w-16 h-16 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-2xl transition-colors">🏆</button>
+                    <button onclick="selectAvatar('🦄')" class="avatar-option w-16 h-16 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-2xl transition-colors">🦄</button>
+                    <button onclick="selectAvatar('🐻')" class="avatar-option w-16 h-16 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-2xl transition-colors">🐻</button>
+                    <button onclick="selectAvatar('🐂')" class="avatar-option w-16 h-16 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-2xl transition-colors">🐂</button>
+                    <button onclick="selectAvatar('🤖')" class="avatar-option w-16 h-16 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-2xl transition-colors">🤖</button>
+                </div>
+                
+                <div class="flex space-x-4">
+                    <button onclick="confirmAvatarSelection()" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium transition-colors flex-1">
+                        Confirmar
+                    </button>
+                    <button onclick="hideAvatarModal()" class="bg-gray-600 hover:bg-gray-700 px-6 py-3 rounded-lg font-medium transition-colors">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wallet Selection Modal -->
+    <div id="walletModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 border border-gray-700 rounded-xl w-full max-w-md p-5">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-lg font-semibold">Selecciona tu wallet</h3>
+                <button onclick="hideWalletModal()" class="text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div id="walletOptions" class="space-y-2">
+                <!-- Opciones generadas dinámicamente -->
+            </div>
+            <div class="text-xs text-gray-400 mt-3">Solo se listan wallets instaladas en tu navegador.</div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="fixed top-4 right-4 z-50 space-y-2">
+        <!-- Notifications will be added here -->
+    </div>
+
+    <!-- Tip Modal -->
+    <div id="tipModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 border border-gray-700 rounded-xl w-full max-w-sm p-5">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-lg font-semibold">Enviar Tip en Base</h3>
+                <button onclick="hideTipModal()" class="text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div class="space-y-3">
+                <div class="text-xs text-gray-400">A: <span id="tipTarget" class="font-mono"></span></div>
+                <div class="grid grid-cols-3 gap-2">
+                    <button class="bg-gray-700 hover:bg-gray-600 rounded px-3 py-2 text-sm" onclick="selectTipAmount('0.0001')">0.0001</button>
+                    <button class="bg-gray-700 hover:bg-gray-600 rounded px-3 py-2 text-sm" onclick="selectTipAmount('0.0005')">0.0005</button>
+                    <button class="bg-gray-700 hover:bg-gray-600 rounded px-3 py-2 text-sm" onclick="selectTipAmount('0.001')">0.001</button>
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Otro monto (ETH)</label>
+                    <input id="tipAmountInput" type="number" step="0.00000001" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2" placeholder="0.0001" />
+                </div>
+                <button onclick="confirmTip()" class="w-full bg-emerald-600 hover:bg-emerald-700 rounded px-4 py-2">Enviar</button>
+                <div id="tipLink" class="hidden text-xs text-gray-400">Tx: <a id="tipTxHref" href="#" target="_blank" class="text-blue-400 underline">ver en Basescan</a></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'977ea8d9d61d7dce',t:'MTc1NjY2NTY2MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
+
+
