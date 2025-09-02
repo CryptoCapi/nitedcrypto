@@ -1017,19 +1017,19 @@ function renderNews() {
                         </div>
                     </div>
                     
-                    <h3 class="text-lg font-semibold mb-2 hover:text-blue-400 transition-colors cursor-pointer" onclick="openPost(${post.id})">${post.title}</h3>
+                    <h3 class="text-lg font-semibold mb-2 hover:text-blue-400 transition-colors cursor-pointer" onclick="openPost('${post.id}')">${post.title}</h3>
                     <p class="text-gray-400 mb-4 break-words text-sm sm:text-base">${post.content}</p>
                     
                     <div class="flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-x-6">
-                        <button onclick="upvotePost(${post.id})" class="flex items-center space-x-2 ${post.userVoted ? 'text-green-400' : 'text-gray-400 hover:text-green-400'} transition-colors">
+                        <button onclick="upvotePost('${post.id}')" class="flex items-center space-x-2 ${post.userVoted ? 'text-green-400' : 'text-gray-400 hover:text-green-400'} transition-colors">
                             <span>${post.userVoted ? '⬆️' : '⬆️'}</span>
                             <span>${post.upvotes}</span>
                         </button>
-                        <button onclick="openComments(${post.id})" class="flex items-center space-x-2 text-gray-400 hover:text-blue-400 transition-colors">
+                        <button onclick="openComments('${post.id}')" class="flex items-center space-x-2 text-gray-400 hover:text-blue-400 transition-colors">
                             <span>💬</span>
                             <span>${(post.commentsCount != null ? post.commentsCount : post.comments.length)} <span class="hidden sm:inline">comentarios</span></span>
                         </button>
-                        <button onclick="sharePost(${post.id})" class="flex items-center space-x-2 text-gray-400 hover:text-yellow-400 transition-colors">
+                        <button onclick="sharePost('${post.id}')" class="flex items-center space-x-2 text-gray-400 hover:text-yellow-400 transition-colors">
                             <span>🔗</span>
                         <span class="hidden sm:inline">Compartir</span>
                         </button>
@@ -1037,7 +1037,7 @@ function renderNews() {
                             <span>💸</span>
                             <span class="hidden sm:inline">Tip</span>
                         </button>
-                        <button onclick="reportPost(${post.id})" class="flex items-center space-x-2 text-gray-400 hover:text-red-400 transition-colors">
+                        <button onclick="reportPost('${post.id}')" class="flex items-center space-x-2 text-gray-400 hover:text-red-400 transition-colors">
                             <span>🚩</span>
                             <span class="hidden sm:inline">Reportar</span>
                         </button>
@@ -1119,11 +1119,11 @@ function renderNews() {
                             </div>
                             <p class="text-gray-300 text-sm">${comment.content}</p>
                             <div class="flex items-center space-x-4 mt-2">
-                                <button onclick="likeComment(${postId}, ${comment.id})" class="flex items-center space-x-1 text-xs ${comment.userLiked ? 'text-red-400' : 'text-gray-400 hover:text-red-400'} transition-colors">
+                                <button onclick="likeComment('${postId}', '${comment.id}')" class="flex items-center space-x-1 text-xs ${comment.userLiked ? 'text-red-400' : 'text-gray-400 hover:text-red-400'} transition-colors">
                                     <span>❤️</span>
                                     <span>${comment.likes}</span>
                                 </button>
-                                <button onclick="replyToComment(${comment.id})" class="text-xs text-gray-400 hover:text-blue-400 transition-colors">
+                                <button onclick="replyToComment('${comment.id}')" class="text-xs text-gray-400 hover:text-blue-400 transition-colors">
                                     Responder
                                 </button>
                             </div>
@@ -1220,7 +1220,7 @@ function renderNews() {
             }
         }
         
-        function reportPost(postId) {
+        function reportPostLegacy(postId) {
             if (!connectedWallet) {
                 alert('Debes conectar tu wallet para reportar');
                 return;
@@ -2155,4 +2155,3 @@ function renderNews() {
             }
             return getBotResponse(message);
         }
-
