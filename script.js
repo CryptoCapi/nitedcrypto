@@ -22,6 +22,15 @@
         // Bot quote por defecto
         let defaultQuote = (function(){ try { return (localStorage.getItem('nc_default_quote') || 'USDT').toUpperCase(); } catch { return 'USDT'; } })();
 
+        // Deep-link: procesa ?post=ID para abrir comentarios al cargar
+        let pendingOpenPostId = (function(){
+            try {
+                const q = new URLSearchParams(window.location.search);
+                const p = q.get('post');
+                return p ? String(p) : null;
+            } catch { return null; }
+        })();
+
         // Ethers helper (carga perezosa con fallback de CDNs)
         async function ensureEthers() {
             if (window.ethers) return window.ethers;
@@ -318,6 +327,13 @@
                 }));
                 forumPosts = posts;
             } catch (e) { console.warn('Firestore load error', e); }
+            // Deep-link: abrir post al cargar
+            try {
+                if (pendingOpenPostId && forumPosts.some(p => String(p.id) === String(pendingOpenPostId))) {
+                    openComments(pendingOpenPostId);
+                    pendingOpenPostId = null;
+                }
+            } catch {}
         }
 
         // Real-time posts subscription
@@ -346,6 +362,13 @@
                     });
                     forumPosts = list;
                     try { renderForumPosts(); } catch {}
+                    // Deep-link: abrir post cuando esté disponible
+                    try {
+                        if (pendingOpenPostId && forumPosts.some(p => String(p.id) === String(pendingOpenPostId))) {
+                            openComments(pendingOpenPostId);
+                            pendingOpenPostId = null;
+                        }
+                    } catch {}
                 }, (err) => console.warn('Firestore onSnapshot posts error', err));
         }
 
@@ -379,7 +402,7 @@
         async function backendAddComment(postId, comment) {
             if (storageMode !== 'firestore' || !db) return false;
             try {
-                await db.collection('posts').doc(String(postId)).collection('comments').add({
+                const ref = await db.collection('posts').doc(String(postId)).collection('comments').add({
                     content: comment.content,
                     author: comment.author,
                     displayName: comment.displayName,
@@ -389,8 +412,53 @@
                 });
                 // increment comment count
                 try { await db.collection('posts').doc(String(postId)).set({ commentsCount: firebase.firestore.FieldValue.increment(1) }, { merge: true }); } catch {}
-                return true;
+                return ref.id;
             } catch (e) { console.warn('Firestore add comment error', e); return false; }
+        }
+
+        async function backendLikeComment(postId, commentId, inc) {
+            if (storageMode !== 'firestore' || !db) return false;
+            try {
+                const ref = db.collection('posts').doc(String(postId)).collection('comments').doc(String(commentId));
+                await ref.set({ likes: firebase.firestore.FieldValue.increment(inc) }, { merge: true });
+                return true;
+            } catch (e) { console.warn('Firestore like comment error', e); return false; }
+        }
+
+        async function backendReportPost(postId, reasonCode) {
+            if (storageMode !== 'firestore' || !db) return false;
+            try {
+                await db.collection('reports').add({
+                    postId: String(postId),
+                    reason: String(reasonCode),
+                    reporter: connectedWallet || 'anonymous',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                });
+                return true;
+            } catch (e) { console.warn('Firestore report error', e); return false; }
+        }
+
+        async function backendLoadProfile(address) {
+            if (storageMode !== 'firestore' || !db || !address) return null;
+            try {
+                const snap = await db.collection('profiles').doc(String(address).toLowerCase()).get();
+                return snap.exists ? (snap.data() || null) : null;
+            } catch (e) { console.warn('Firestore load profile error', e); return null; }
+        }
+
+        async function backendSaveProfile(address, profile) {
+            if (storageMode !== 'firestore' || !db || !address) return false;
+            try {
+                const data = {
+                    displayName: profile.displayName || '',
+                    bio: profile.bio || '',
+                    avatar: profile.avatar || '',
+                    interests: Array.isArray(profile.interests) ? profile.interests : [],
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                };
+                await db.collection('profiles').doc(String(address).toLowerCase()).set(data, { merge: true });
+                return true;
+            } catch (e) { console.warn('Firestore save profile error', e); return false; }
         }
 
         // Subscribe comments for a post (real-time)
@@ -636,12 +704,25 @@
             }
         }
         
-        function loadUserProfile() {
-            // Load saved profile data from localStorage
-            const savedProfile = localStorage.getItem(`profile_${connectedWallet}`);
-            if (savedProfile) {
-                userProfile = { ...userProfile, ...JSON.parse(savedProfile) };
-            }
+        async function loadUserProfile() {
+            // Firestore primero (si está disponible), luego localStorage
+            try {
+                if (storageMode === 'firestore' && db && connectedWallet) {
+                    const cloud = await backendLoadProfile(connectedWallet);
+                    if (cloud) {
+                        userProfile = { ...userProfile, ...cloud };
+                        try { localStorage.setItem(`profile_${connectedWallet}`, JSON.stringify(userProfile)); } catch {}
+                    } else {
+                        const saved = localStorage.getItem(`profile_${connectedWallet}`);
+                        if (saved) userProfile = { ...userProfile, ...JSON.parse(saved) };
+                    }
+                } else {
+                    const savedProfile = localStorage.getItem(`profile_${connectedWallet}`);
+                    if (savedProfile) {
+                        userProfile = { ...userProfile, ...JSON.parse(savedProfile) };
+                    }
+                }
+            } catch {}
             
             // Update form fields
             document.getElementById('displayName').value = userProfile.displayName || '';
@@ -658,7 +739,7 @@
             document.getElementById('profileNetwork').textContent = currentNetwork;
         }
         
-        function updateProfile(event) {
+        async function updateProfile(event) {
             event.preventDefault();
             
             const displayName = document.getElementById('displayName').value.trim();
@@ -676,6 +757,8 @@
             
             // Save to localStorage
             localStorage.setItem(`profile_${connectedWallet}`, JSON.stringify(userProfile));
+            // Guardar también en Firestore si está activo
+            try { if (storageMode === 'firestore' && db && connectedWallet) { await backendSaveProfile(connectedWallet, userProfile); } } catch {}
             
             // Update forum posts to show new display name
             updateForumPostsWithProfile();
@@ -801,12 +884,14 @@
             event.target.classList.add('ring-2', 'ring-blue-500');
         }
         
-        function confirmAvatarSelection() {
+        async function confirmAvatarSelection() {
             userProfile.avatar = selectedAvatar;
             document.getElementById('currentProfilePic').textContent = selectedAvatar;
             
             // Save to localStorage
             localStorage.setItem(`profile_${connectedWallet}`, JSON.stringify(userProfile));
+            // Guardar en Firestore si aplica
+            try { if (storageMode === 'firestore' && db && connectedWallet) { await backendSaveProfile(connectedWallet, userProfile); } } catch {}
             
             // Update forum posts
             updateForumPostsWithProfile();
@@ -1048,7 +1133,7 @@ function renderNews() {
             `).join('');
         }
         
-        function addComment(event) {
+        async function addComment(event) {
             event.preventDefault();
             
             if (!connectedWallet) {
@@ -1077,9 +1162,17 @@ function renderNews() {
             renderComments(currentPostId);
             renderForumPosts(); // Actualizar contador de comentarios
             persistForum();
+            // Backend: crear comentario y ajustar id local
+            try {
+                const createdId = await backendAddComment(currentPostId, newComment);
+                if (createdId) {
+                    newComment.id = createdId;
+                    persistForum();
+                }
+            } catch {}
         }
         
-        function likeComment(postId, commentId) {
+        async function likeComment(postId, commentId) {
             if (!connectedWallet) {
                 alert('Debes conectar tu wallet para dar like');
                 return;
@@ -1091,9 +1184,11 @@ function renderNews() {
             if (comment.userLiked) {
                 comment.likes--;
                 comment.userLiked = false;
+                try { await backendLikeComment(postId, commentId, -1); } catch {}
             } else {
                 comment.likes++;
                 comment.userLiked = true;
+                try { await backendLikeComment(postId, commentId, +1); } catch {}
             }
             
                 renderComments(postId);
@@ -1113,10 +1208,10 @@ function renderNews() {
                 navigator.share({
                     title: `NitedCrypto - ${post.title}`,
                     text: post.content.substring(0, 100) + '...',
-                    url: `${window.location.origin}/post/${postId}`
+                    url: `${window.location.origin}${window.location.pathname}?post=${encodeURIComponent(postId)}`
                 });
             } else {
-                const url = `${window.location.origin}/post/${postId}`;
+                const url = `${window.location.origin}${window.location.pathname}?post=${encodeURIComponent(postId)}`;
                 navigator.clipboard.writeText(url).then(() => {
                     alert('¡Enlace copiado al portapapeles!');
                 }).catch(() => {
@@ -1146,6 +1241,27 @@ function renderNews() {
             }
         }
         
+        // Overwrite reportPost with backend persistence
+        async function reportPost(postId) {
+            if (!connectedWallet) {
+                alert('Debes conectar tu wallet para reportar');
+                return;
+            }
+            const reasons = [
+                '1. Spam o contenido repetitivo',
+                '2. Contenido inapropiado u ofensivo',
+                '3. Información falsa o engañosa',
+                '4. Violación de derechos de autor',
+                '5. Otro motivo'
+            ];
+            const reason = prompt(`¿Por qué reportas este post?\n\n${reasons.join('\n')}\n\nEscribe el número (1-5):`);
+            if (reason && Number(reason) >= 1 && Number(reason) <= 5) {
+                const ok = await backendReportPost(postId, Number(reason));
+                if (ok) { try { showNotification('Post reportado. Gracias por avisar.', 'info'); } catch { alert('Post reportado. Gracias por avisar.'); } }
+                else { alert('No se pudo enviar el reporte ahora. Inténtalo más tarde.'); }
+            }
+        }
+
         function renderTopContributors() {
             const contributorsContainer = document.getElementById('topContributors');
             
@@ -1295,10 +1411,15 @@ function renderNews() {
             
             forumPosts.unshift(newPost);
             renderForumPosts();
-            persistForum();
             // Backend opcional: con onSnapshot no hace falta recargar manualmente
             const createdId = await backendCreatePost(newPost);
+            // Si Firestore devuelve ID, úsalo inmediatamente para evitar duplicados y
+            // asegurar que upvotes/comentarios apunten al documento correcto
+            if (createdId) {
+                newPost.id = createdId;
+            }
             hideNewPostModal();
+            // Persistir después de ajustar el ID (si aplica)
             persistForum();
             
             // Mostrar mensaje de éxito
@@ -2034,3 +2155,4 @@ function renderNews() {
             }
             return getBotResponse(message);
         }
+
