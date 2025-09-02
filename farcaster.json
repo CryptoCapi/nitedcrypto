@@ -1,4 +1,15 @@
 {
+  "frame": {
+    "version": "1",
+    "name": "NitedCryptoForum",
+    "homeUrl": "https://cryptocapi.github.io/nitedcrypto",
+    "iconUrl": "https://avatars.githubusercontent.com/u/108554348?s=200&v=4",
+    "splashImageUrl": "https://avatars.githubusercontent.com/u/108554348?s=200&v=4",
+    "splashBackgroundColor": "#0A0A0A",
+    "primaryCategory": "social",
+    "tags": ["forum", "tips", "upvotes", "base", "social"],
+    "noindex": true
+  },
   "baseBuilder": {
     "allowedAddresses": [
       "0x32Fc88c282c5868d19Bc0cF88561f23003beea03"
